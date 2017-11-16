@@ -40,7 +40,7 @@ word.counter$apply(splitted)
 self<-word.counter
 word.counter$ret()
 
-#words frecuency
+#words counter
 futile.logger::flog.appender(futile.logger::appender.tee("RPolyedra.log"), name = "Rexpansive")
 flog.threshold(DEBUG, name="Rexpansive")
 
@@ -51,11 +51,18 @@ tweets[[2]]$user$screen_name
 paste(lapply(tweets[[2]],FUN=function(x){print(length(grep("\\@",x)))
                                     if (length(grep("\\@",x))>0) x else ""}),collapse=",")
 
+#show metadata from extracted tweets
 word.counter<-c(ApplyFileLineFromJSON.class$new(),
-                ApplyFileLineFieldsExtractor.class$new(c("text","timestamp_ms","id_str","user$screen_name")),
-                ApplyFileLineSplitter.class$new(),
-                ApplyFileLineWordFrequency.class$new())
+                ApplyFileLineFieldsExtractor.class$new(c("text","timestamp_ms","id_str","user$screen_name"))
+                )
 tweets<-applyLinesFile(cf.path,max.lines=1000,word.counter)
 fromJSON(linn)$text
 
+word.counter<-list(ApplyFileLineFromJSON.class$new(),
+                    ApplyFileLineFieldsExtractor.class$new("text"),
+                    ApplyFileLineSplitter.class$new(),
+                    ApplyFileLineWordCounter.class$new())
+tweets<-applyLinesFile(cf.path,max.lines=1000,apply=word.counter)
+word.counter[[3]]
+word.counter[[4]]$words
 

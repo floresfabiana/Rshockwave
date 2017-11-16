@@ -1,15 +1,33 @@
 library("R6")
 library("futile.logger")
+library("tm")
 
-removeAccents<-function(text){
+removeAccents<-function(txt){
   #TODO stuff '
-  ret<-iconv(text, to='ASCII//TRANSLIT')
+  ret<-iconv(txt, to='ASCII//TRANSLIT')
   ret<-gsub("'|\\~","",ret)
   ret
 }
 
-normalizeString<-function(text){
-  removeAccents(trimws(tolower(text)))
+# ' Normalize String for simplifying interpretation
+normalizeString<-function(txt){
+  txt<<-txt
+  txt <-iconv(txt, "latin1", "ASCII", sub="")
+  removeAccents(trimws(tolower(txt)))
+}
+normalizeStringsFromDataFrame<-function(df){
+  if (!is.data.frame(df)){
+    df<-normalizeString(df)
+  }
+  else{
+    for (field in names(df)){
+      val <- df[,field]
+      if(is.character(val)){
+        df[,field] <- normalizeString(val)
+      }
+    }
+  }
+  df
 }
 
 
@@ -45,7 +63,7 @@ ApplyFileLine.class<-R6Class("ApplyFileLine",
       stop("Abstract class")
     }))
 
-ApplyFileLineFromJSON.class<-R6Class("ApplyFileLine",
+ApplyFileLineFromJSON.class<-R6Class("ApplyFileLineFromJSON",
  inherit=ApplyFileLine.class,
  public = list(
    parsed=NA,
@@ -92,8 +110,9 @@ ApplyFileLineFieldsExtractor.class<-R6Class("ApplyFileLineFieldsExtractor",
           ret[,field]<- val
         }
        }
-       #debug
-       print(ret)
+       # #debug
+       # print(ret)
+
        ret
      },
      ret=function(){
@@ -125,8 +144,6 @@ ApplyFileMetaApplier.class<-R6Class("ApplyFileMetaApplier",
         self$applyAll(function(x,y){y<-x$apply(y)},val)
       },
       ret=function(){
-        #debug
-        print(length(self$appliers))
         if (!is.list(self$appliers)){
           ret <- self$appliers$ret()
         }
@@ -140,13 +157,15 @@ ApplyFileMetaApplier.class<-R6Class("ApplyFileMetaApplier",
 ApplyFileLineSplitter.class<-R6Class("ApplyFileLineSplitter",
   inherit=ApplyFileLine.class,
   public = list(
-    initialize = function(){
+    col = NA,
+    initialize = function(col=1){
+      self$col <- col
     },
     init=function(){
     },
     apply=function(val){
-      val<-normalizeString(val)
-      strsplit(val,split = " ")[[1]]
+      val<-normalizeStringsFromDataFrame(val)
+      strsplit(val[,self$col],split = " ")[[1]]
     },
     ret=function(){
       NULL
