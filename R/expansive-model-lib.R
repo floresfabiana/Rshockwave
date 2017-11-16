@@ -30,34 +30,90 @@ normalizeStringsFromDataFrame<-function(df){
 }
 
 
-applyLinesFile<-function(filename,max.lines=0,apply){
+applyLinesFile.readLines<-function(filename,max.lines=0,apply){
   timestamp.begin<-Sys.time()
   meta.applier<-ApplyFileMetaApplier.class$new(apply)
   meta.applier$init()
   con <- file(filename,open="r")
+#  if (max.lines>0){
   line <- readLines(con,n=max.lines)
-  secs<-difftime(Sys.time(),timestamp.begin,"secs")[[1]]
-  print(paste("counted lines in file in ",round(secs)," secs",sep=""))
-  timestamp.begin<-Sys.time()
+  close(con)
   long <- length(line)
-  for (i in 1:long){
-    linn<-readLines(con,1)
+  rm("line")
+  secs<-difftime(Sys.time(),timestamp.begin,unit="secs")[[1]]
+  print(paste("counted ",long, " lines in file in ",round(secs)," secs",sep=""))
+  timestamp.begin<-Sys.time()
+  empty.rows<-0
+  con <- file(filename,open="r")
+  # }
+  # else{
+  #   line<-500000
+  # }
+  long.100<-round(long,-floor(log10(long))+2)
+  #debug
+  long<<-long
+  long.100<<-long.100
+  while (TRUE){
+    linn<-readLines(con,n=1)
+    if ( length(line) == 0 ) {
+      break
+    }
     futile.logger::flog.debug(paste("executing line",i))
     #debug
-    if ((i/max.lines*100)%%1==0){
+    if ((i/long.100*100)%%1==0){
+      print(paste("executing line ",i,"/",long,": ",round(i/long*100,2),"%",sep=""))
+      secs<-difftime(Sys.time(),timestamp.begin,units = "secs")[[1]]
+      total.estimated.time<-secs*long/(i)
+      print(paste("elapsed ",round(secs),"secs. Estimated ",round(total.estimated.time),"secs",sep=""))
+      print(paste("empty rows",empty.rows))
+    }
+    #debug
+    i<<-i
+    linn<<-linn
+    meta.applier$apply(linn)
+  }
+  close(con)
+  meta.applier$ret()
+}
+
+applyLinesFile.scan<-function(filename,max.lines=0,apply){
+  timestamp.begin<-Sys.time()
+  meta.applier<-ApplyFileMetaApplier.class$new(apply)
+  meta.applier$init()
+  com <- paste("wc -l ", filename, " | awk '{ print $1 }'", sep="")
+  long <- as.numeric(system(command=com, intern=TRUE))
+  con <- file(filename,open="r")
+  secs<-difftime(Sys.time(),timestamp.begin,unit="secs")[[1]]
+  print(paste("counted ",long, " lines in file in ",round(secs)," secs",sep=""))
+  timestamp.begin<-Sys.time()
+  long.100<-round(long,-floor(log10(long))+2)
+  #debug
+  long<<-long
+  long.100<<-long.100
+  for (i in 1:long){
+    linn<-readLines(con,n=1)
+    #linn<-scan(file=con, what=raw(),nlines=1, quiet=TRUE)
+    if ( length(line) == 0 ) {
+      break
+    }
+    futile.logger::flog.debug(paste("executing line",i))
+    #debug
+    if (((i-1)/long.100*100)%%1==0){
       print(paste("executing line ",i,"/",long,": ",round(i/long*100,2),"%",sep=""))
       secs<-difftime(Sys.time(),timestamp.begin,units = "secs")[[1]]
       total.estimated.time<-secs*long/(i)
       print(paste("elapsed ",round(secs),"secs. Estimated ",round(total.estimated.time),"secs",sep=""))
     }
     #debug
+    i<<-i
     linn<<-linn
-
     meta.applier$apply(linn)
   }
   close(con)
   meta.applier$ret()
 }
+
+
 
 #' Apply File Line. For scrapping and on the fly executing and not using memory
 ApplyFileLine.class<-R6Class("ApplyFileLine",

@@ -86,6 +86,7 @@ plot(log(words.count.df.final$count.final))
 #
 #
 
+applyLinesFile<-applyLinesFile.readLines
 word.counter<-list(ApplyFileLineFromJSON.class$new(),
                    ApplyFileLineFieldsExtractor.class$new("text"),
                    ApplyFileLineSplitter.class$new(),
@@ -93,8 +94,10 @@ word.counter<-list(ApplyFileLineFromJSON.class$new(),
 
 files.tweets<-dir(maldonado.tweets.dir)
 files.tweets<-files.tweets[grep("json",files.tweets)]
-for (cf in files.tweets){
-  #cf<-files.tweets[2]
+applyLinesFile<-applyLinesFile.scan
+for (cf in files.tweets[1]){
+#  for (cf in files.tweets){
+    #cf<-files.tweets[2]
   cf.path<-paste(maldonado.tweets.dir,cf,sep="")
   #debug
   print(paste("processing file ",cf))
