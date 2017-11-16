@@ -1,7 +1,11 @@
 library(rjson)
 library(BreakoutDetection)
 
-maldonado.tweets.dir<-"/usr/local/maldonado/"
+options("scipen"=6)
+
+maldonado.tweets.dir<-"~/Documents/maldonado/"
+maldonado.tweets.dir.out<-paste(maldonado.tweets.dir,"out/",sep="")
+dir.create(maldonado.tweets.dir.out,showWarnings = FALSE)
 files.tweets<-dir(maldonado.tweets.dir)
 cf<-files.tweets[2]
 cf.path<-paste(maldonado.tweets.dir,cf,sep="")
@@ -94,7 +98,7 @@ word.counter<-list(ApplyFileLineFromJSON.class$new(),
 
 files.tweets<-dir(maldonado.tweets.dir)
 files.tweets<-files.tweets[grep("json",files.tweets)]
-applyLinesFile<-applyLinesFile.scan
+applyLinesFile<-applyLinesFile.awk
 for (cf in files.tweets[1]){
 #  for (cf in files.tweets){
     #cf<-files.tweets[2]
@@ -103,6 +107,40 @@ for (cf in files.tweets[1]){
   print(paste("processing file ",cf))
 #  tweets<-applyLinesFile(cf.path,max.lines=1500,apply=word.counter)
 #  tweets<-applyLinesFile(cf.path,max.lines=50000,apply=word.counter)
+  tweets<-applyLinesFile(cf.path,max.lines=100000,apply=word.counter)
+#  tweets<-applyLinesFile(cf.path,max.lines=-1,apply=word.counter)
+}
+words.count.df<-as.data.frame.dictionary(dictionary = word.counter[[4]]$words)
+#head(words.count.df,n=20)
+words.count.df.final<-unique(words.count.df[,c("word.final","count.final")])
+#head(words.count.df.final,n=30)
+nrow(words.count.df.final)
+total.count<-sum(words.count.df.final$count.final)
+words.count.df.final$freq<-words.count.df.final$count.final/total.count
+nrow(words.count.df.final)
+words.count.df.final<-words.count.df.final[words.count.df.final$freq>0.00001,]
+nrow(words.count.df.final)
+tail(words.count.df.final,n=20)
+head(words.count.df.final,n=30)
+
+
+
+#All files processing
+word.counter<-list(ApplyFileLineFromJSON.class$new(),
+                   ApplyFileLineFieldsExtractor.class$new("text"),
+                   ApplyFileLineSplitter.class$new(),
+                   ApplyFileLineWordCounter.class$new())
+
+files.tweets<-dir(maldonado.tweets.dir)
+files.tweets<-files.tweets[grep("json",files.tweets)]
+applyLinesFile<-applyLinesFile.awk
+
+for (cf in files.tweets){
+  #  for (cf in files.tweets){
+  #cf<-files.tweets[2]
+  cf.path<-paste(maldonado.tweets.dir,cf,sep="")
+  #debug
+  print(paste("processing file ",cf))
   tweets<-applyLinesFile(cf.path,max.lines=-1,apply=word.counter)
 }
 words.count.df<-as.data.frame.dictionary(dictionary = word.counter[[4]]$words)
@@ -117,4 +155,7 @@ words.count.df.final<-words.count.df.final[words.count.df.final$freq>0.00001,]
 nrow(words.count.df.final)
 tail(words.count.df.final,n=20)
 head(words.count.df.final,n=30)
+write.csv(words.count.df.final,
+          file = paste(maldonado.tweets.dir.out,"word.frecuencies.csv",sep=""))
+
 

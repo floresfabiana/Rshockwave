@@ -76,7 +76,7 @@ applyLinesFile.readLines<-function(filename,max.lines=0,apply){
   meta.applier$ret()
 }
 
-applyLinesFile.scan<-function(filename,max.lines=0,apply){
+applyLinesFile.awk<-function(filename,max.lines=-1,apply){
   timestamp.begin<-Sys.time()
   meta.applier<-ApplyFileMetaApplier.class$new(apply)
   meta.applier$init()
@@ -85,6 +85,10 @@ applyLinesFile.scan<-function(filename,max.lines=0,apply){
   con <- file(filename,open="r")
   secs<-difftime(Sys.time(),timestamp.begin,unit="secs")[[1]]
   print(paste("counted ",long, " lines in file in ",round(secs)," secs",sep=""))
+  if (max.lines>0){
+    long<-min(long,max.lines)
+    print(paste("processing ",long, " lines ",sep=""))
+  }
   timestamp.begin<-Sys.time()
   long.100<-round(long,-floor(log10(long))+2)
   #debug
@@ -102,7 +106,7 @@ applyLinesFile.scan<-function(filename,max.lines=0,apply){
       print(paste("executing line ",i,"/",long,": ",round(i/long*100,2),"%",sep=""))
       secs<-difftime(Sys.time(),timestamp.begin,units = "secs")[[1]]
       total.estimated.time<-secs*long/(i)
-      print(paste("elapsed ",round(secs),"secs. Estimated ",round(total.estimated.time),"secs",sep=""))
+      print(paste("elapsed ",round(secs)," secs. Estimated ",round(total.estimated.time)," secs.",sep=""))
     }
     #debug
     i<<-i
