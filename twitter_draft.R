@@ -99,18 +99,19 @@ for (cf in files.tweets){
   #debug
   print(paste("processing file ",cf))
 #  tweets<-applyLinesFile(cf.path,max.lines=1500,apply=word.counter)
-  tweets<-applyLinesFile(cf.path,max.lines=0,apply=word.counter)
+#  tweets<-applyLinesFile(cf.path,max.lines=50000,apply=word.counter)
+  tweets<-applyLinesFile(cf.path,max.lines=-1,apply=word.counter)
 }
 words.count.df<-as.data.frame.dictionary(dictionary = word.counter[[4]]$words)
-head(words.count.df,n=20)
+#head(words.count.df,n=20)
 words.count.df.final<-unique(words.count.df[,c("word.final","count.final")])
-head(words.count.df.final,n=30)
+#head(words.count.df.final,n=30)
 nrow(words.count.df.final)
 total.count<-sum(words.count.df.final$count.final)
 words.count.df.final$freq<-words.count.df.final$count.final/total.count
 nrow(words.count.df.final)
 words.count.df.final<-words.count.df.final[words.count.df.final$freq>0.00001,]
 nrow(words.count.df.final)
-tail(words.count.df.final,n=50)
-head(words.count.df.final,n=50)
+tail(words.count.df.final,n=20)
+head(words.count.df.final,n=30)
 

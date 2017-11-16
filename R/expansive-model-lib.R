@@ -36,17 +36,23 @@ applyLinesFile<-function(filename,max.lines=0,apply){
   meta.applier$init()
   con <- file(filename,open="r")
   line <- readLines(con,n=max.lines)
+  secs<-difftime(Sys.time(),timestamp.begin,"secs")[[1]]
+  print(paste("counted lines in file in ",round(secs)," secs",sep=""))
+  timestamp.begin<-Sys.time()
   long <- length(line)
   for (i in 1:long){
     linn<-readLines(con,1)
     futile.logger::flog.debug(paste("executing line",i))
     #debug
     if ((i/max.lines*100)%%1==0){
-      print(paste("executing line ",i," ",i/long*100,"%",sep=""))
-      secs<-difftime(Sys.time(),timestamp.begin,"secs")[[1]]
+      print(paste("executing line ",i,"/",long,": ",round(i/long*100,2),"%",sep=""))
+      secs<-difftime(Sys.time(),timestamp.begin,units = "secs")[[1]]
       total.estimated.time<-secs*long/(i)
       print(paste("elapsed ",round(secs),"secs. Estimated ",round(total.estimated.time),"secs",sep=""))
     }
+    #debug
+    linn<<-linn
+
     meta.applier$apply(linn)
   }
   close(con)
