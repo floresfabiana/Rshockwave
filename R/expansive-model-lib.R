@@ -1,4 +1,17 @@
 library("R6")
+library("futile.logger")
+
+removeAccents<-function(text){
+  #TODO stuff '
+  ret<-iconv(text, to='ASCII//TRANSLIT')
+  ret<-gsub("'|\\~","",ret)
+  ret
+}
+
+normalizeString<-function(text){
+  removeAccents(trimws(tolower(text)))
+}
+
 
 applyLinesFile<-function(filename,max.lines=0,apply){
   meta.applier<-ApplyFileMetaApplier.class$new(apply)
@@ -8,6 +21,9 @@ applyLinesFile<-function(filename,max.lines=0,apply){
   long <- length(line)
   for (i in 1:long){
     linn<-readLines(con,1)
+    futile.logger::flog.debug(paste("executing line",i))
+    #debug
+    print(paste("executing line",i))
     meta.applier$apply(linn)
   }
   close(con)
@@ -47,6 +63,42 @@ ApplyFileLineFromJSON.class<-R6Class("ApplyFileLine",
      self$parsed
    }))
 
+ApplyFileLineFieldsExtractor.class<-R6Class("ApplyFileLineFieldsExtractor",
+   inherit=ApplyFileLine.class,
+   public = list(
+     fields = NA,
+     prototype = NA,
+     initialize = function(fields){
+       self$fields<-fields
+       proto.list<-list()
+       for (field in fields){
+         proto.list[[field]]<-""
+       }
+       self$prototype<-as.data.frame(proto.list)
+     },
+     init=function(){
+     },
+     apply=function(val){
+       ret<-self$prototype
+       for (field in self$fields){
+        members<-strsplit(field,split ="\\$")[[1]]
+        if (length(members)==1){
+          ret[,field]<- val[[field]]
+        }
+        else{
+          for (member in members){
+            val <- val[[member]]
+          }
+          ret[,field]<- val
+        }
+       }
+       #debug
+       print(ret)
+       ret
+     },
+     ret=function(){
+     }))
+
 ApplyFileMetaApplier.class<-R6Class("ApplyFileMetaApplier",
     inherit=ApplyFileLine.class,
     public = list(
@@ -54,9 +106,15 @@ ApplyFileMetaApplier.class<-R6Class("ApplyFileMetaApplier",
       initialize = function(appliers){
         self$appliers<-appliers
       },
-      applyAll=function(function2apply){
-        for (apply in self$appliers){
-          ret<-function2apply(apply,ret)
+      applyAll=function(function2apply,initial.val=NULL){
+        ret<-initial.val
+        if (!is.list(self$appliers)){
+          ret<-function2apply(self$appliers,ret)
+        }
+        else{
+          for (apply in self$appliers){
+            ret<-function2apply(apply,ret)
+          }
         }
         ret
       },
@@ -64,11 +122,18 @@ ApplyFileMetaApplier.class<-R6Class("ApplyFileMetaApplier",
         self$applyAll(function(x,y){x$init()})
       },
       apply=function(val){
-        y<-val
-        self$applyAll(function(x,y){y<-x$apply(y)})
+        self$applyAll(function(x,y){y<-x$apply(y)},val)
       },
       ret=function(){
-        self$appliers[[length(self$appliers)]]$ret()
+        #debug
+        print(length(self$appliers))
+        if (!is.list(self$appliers)){
+          ret <- self$appliers$ret()
+        }
+        else{
+          ret <- self$appliers[[length(self$appliers)]]$ret()
+        }
+        ret
       }))
 
 
@@ -80,7 +145,7 @@ ApplyFileLineSplitter.class<-R6Class("ApplyFileLineSplitter",
     init=function(){
     },
     apply=function(val){
-      val<-tolower(val)
+      val<-normalizeString(val)
       strsplit(val,split = " ")[[1]]
     },
     ret=function(){
