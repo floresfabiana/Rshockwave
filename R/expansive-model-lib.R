@@ -1,6 +1,5 @@
 library("R6")
 library("futile.logger")
-library("tm")
 
 removeAccents<-function(txt){
   #TODO stuff '
@@ -32,6 +31,7 @@ normalizeStringsFromDataFrame<-function(df){
 
 
 applyLinesFile<-function(filename,max.lines=0,apply){
+  timestamp.begin<-Sys.time()
   meta.applier<-ApplyFileMetaApplier.class$new(apply)
   meta.applier$init()
   con <- file(filename,open="r")
@@ -41,7 +41,12 @@ applyLinesFile<-function(filename,max.lines=0,apply){
     linn<-readLines(con,1)
     futile.logger::flog.debug(paste("executing line",i))
     #debug
-    print(paste("executing line",i))
+    if ((i/max.lines*100)%%1==0){
+      print(paste("executing line ",i," ",i/long*100,"%",sep=""))
+      secs<-difftime(Sys.time(),timestamp.begin,"secs")[[1]]
+      total.estimated.time<-secs*long/(i)
+      print(paste("elapsed ",round(secs),"secs. Estimated ",round(total.estimated.time),"secs",sep=""))
+    }
     meta.applier$apply(linn)
   }
   close(con)
@@ -174,18 +179,21 @@ ApplyFileLineSplitter.class<-R6Class("ApplyFileLineSplitter",
 ApplyFileLineWordCounter.class<-R6Class("ApplyFileLineWordCounter",
  inherit=ApplyFileLine.class,
  public = list(
-   words=NA,
+   words=NULL,
    initialize = function(){
    },
    init=function(){
-     self$words<-list()
+     if (is.null(self$words))
+        self$words<-list()
    },
    apply=function(val){
      for (word in val){
-       if (!word %in% names(self$words)){
-         self$words[[word]]<-0
+       if (nchar(word)>0){
+         if (!word %in% names(self$words)){
+           self$words[[word]]<-0
+         }
+         self$words[[word]]<-self$words[[word]]+1
        }
-       self$words[[word]]<-self$words[[word]]+1
      }
      val
    },
@@ -229,3 +237,31 @@ ThematicUnitStrategyText.class<-R6Class("ThematicUnitStrategyText",
     }
   ))
 
+
+as.data.frame.dictionary<-function(dictionary){
+  ret<-data.frame(word=names(dictionary),
+                  count=0,freq=0,word.corrected="",correction="",word.final="",
+                  stringsAsFactors = FALSE)
+  for (word in names(dictionary)){
+    row<-which(ret$word==word)
+    ret[row,c("count")]<-dictionary[[word]]
+  }
+  ret$freq<-ret$count/sum(ret$count)
+  #TODO trivial corrections of :
+  regexp.final.punct<-"^([[:alnum:]]+)[[:punct:]]+$"
+  rows.final.punct<-grep(regexp.final.punct,ret$word)
+  ret[,"correction"]<-ret[,"word"]
+  ret[rows.final.punct,"correction"]<-sub(regexp.final.punct,"\\1",ret[rows.final.punct,"word"])
+  #TODO dictionary corrections
+  head(ret[which(ret$word.final==""),])
+
+  #TODO transitive closure
+  ret[,"word.final"]<-ret[,"correction"]
+  #COUNT TOTAL
+  ret.agg<-aggregate(ret[,"count"],by=list(word.final=ret$word.final),FUN=sum)
+  names(ret.agg)[2]<-"count.final"
+  #ret.agg<-ret.agg[order(ret.agg$count,decreasing = TRUE),]
+  ret<-merge(ret,ret.agg,by=c("word.final"))
+  ret<-ret[order(-ret$count.final,-ret$count,ret$word),]
+  ret
+}
